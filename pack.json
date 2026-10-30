@@ -1,0 +1,170 @@
+{
+ "version": 2,
+ "engine": {
+  "size": 50749272,
+  "hash": "d60e23310332b26f"
+ },
+ "core": {
+  "size": 62610409,
+  "parts": [
+   "core.pack"
+  ],
+  "files": 534,
+  "hash": "0e2915c762dffb00"
+ },
+ "core_hd": {
+  "size": 94731967,
+  "parts": [
+   "core_hd.pack"
+  ],
+  "files": 534,
+  "hash": "dd0439e72d15f9e4"
+ },
+ "maps": [
+  {
+   "name": "BlackBoxPark",
+   "size": 1133886,
+   "parts": [
+    "maps/BlackBoxPark.skate"
+   ],
+   "hash": "b605bb2f7034af2d",
+   "preview": "previews/BlackBoxPark.png",
+   "hd": {
+    "size": 9022052,
+    "parts": [
+     "maps_hd/BlackBoxPark.skate"
+    ],
+    "hash": "c11155275801b92f"
+   }
+  },
+  {
+   "name": "dmjumpline",
+   "size": 11922009,
+   "parts": [
+    "maps/dmjumpline.skate"
+   ],
+   "hash": "5e54b7244d08c8ad",
+   "preview": "previews/dmjumpline.png",
+   "hd": {
+    "size": 11922009,
+    "parts": [
+     "maps_hd/dmjumpline.skate"
+    ],
+    "hash": "5e54b7244d08c8ad"
+   }
+  },
+  {
+   "name": "DownTownSkatePark",
+   "size": 3352682,
+   "parts": [
+    "maps/DownTownSkatePark.skate"
+   ],
+   "hash": "5e9bd8c005724f1f",
+   "preview": "previews/DownTownSkatePark.png",
+   "hd": {
+    "size": 21085366,
+    "parts": [
+     "maps_hd/DownTownSkatePark.skate"
+    ],
+    "hash": "de50efc39aee0b12"
+   }
+  },
+  {
+   "name": "IndustrialSkatePark",
+   "size": 1507904,
+   "parts": [
+    "maps/IndustrialSkatePark.skate"
+   ],
+   "hash": "105d924b08a98d39",
+   "preview": "previews/IndustrialSkatePark.png",
+   "hd": {
+    "size": 8718303,
+    "parts": [
+     "maps_hd/IndustrialSkatePark.skate"
+    ],
+    "hash": "91e3dbc38b5b55b8"
+   }
+  },
+  {
+   "name": "MaloofMoneyCup",
+   "size": 3284583,
+   "parts": [
+    "maps/MaloofMoneyCup.skate"
+   ],
+   "hash": "f8a3a1fc2f345f6f",
+   "preview": "previews/MaloofMoneyCup.png",
+   "hd": {
+    "size": 23878940,
+    "parts": [
+     "maps_hd/MaloofMoneyCup.skate"
+    ],
+    "hash": "1660bc82d097fe1d"
+   }
+  },
+  {
+   "name": "MegaPark",
+   "size": 943877,
+   "parts": [
+    "maps/MegaPark.skate"
+   ],
+   "hash": "95e407908014ffc4",
+   "preview": "previews/MegaPark.png",
+   "hd": {
+    "size": 6463623,
+    "parts": [
+     "maps_hd/MegaPark.skate"
+    ],
+    "hash": "1c2994a274ba2491"
+   }
+  },
+  {
+   "name": "SkateSchool",
+   "size": 9128326,
+   "parts": [
+    "maps/SkateSchool.skate"
+   ],
+   "hash": "635eee15759f50b1",
+   "preview": "previews/SkateSchool.png",
+   "hd": {
+    "size": 31762373,
+    "parts": [
+     "maps_hd/SkateSchool.skate"
+    ],
+    "hash": "a082f3d603896965"
+   }
+  },
+  {
+   "name": "StartPark",
+   "size": 754335,
+   "parts": [
+    "maps/StartPark.skate"
+   ],
+   "hash": "b653893000760537",
+   "preview": "previews/StartPark.png",
+   "hd": {
+    "size": 4521595,
+    "parts": [
+     "maps_hd/StartPark.skate"
+    ],
+    "hash": "5d116f6e744fcb18"
+   }
+  },
+  {
+   "name": "KenneyPark",
+   "size": 50292,
+   "parts": [
+    "maps/KenneyPark.skate"
+   ],
+   "hash": "38040e00d2f0c424",
+   "preview": "previews/KenneyPark.png",
+   "hd": {
+    "size": 50292,
+    "parts": [
+     "maps_hd/KenneyPark.skate"
+    ],
+    "hash": "38040e00d2f0c424"
+   }
+  }
+ ],
+ "default": "StartPark"
+}

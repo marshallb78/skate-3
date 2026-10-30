@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="previews/g3_logo.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="skate. × G+3">
+<link rel="manifest" href="manifest.webmanifest">
+<title>skate. 3 × G+3</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #070a12;
+    --cyan: #00f0ff;
+    --blue: #0070f3;
+    --pink: #ff2a85;
+    --green: #3fb950;
+    --fg: #f4f7fb;
+    --muted: #8b9bb4;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font: 14px/1.4 "Arial Black", "Impact", system-ui, -apple-system, "Segoe UI", sans-serif;
+    overflow: hidden;
+    touch-action: none; overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+  }
+  #game { position: fixed; inset: 0; background: #000; z-index: 1; }
+  #bevy { width: 100%; height: 100%; display: block; outline: none; }
+  body.low-gfx #bevy { image-rendering: pixelated; }
+
+  /* ==================== LIVE 3D MENU BACKGROUND CANVAS ==================== */
+  #lobby {
+    position: fixed; inset: 0; z-index: 10;
+    display: flex; flex-direction: column; justify-content: space-between;
+    overflow: hidden;
+  }
+  #lobby.hidden { display: none; }
+
+  #bg-canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    display: block; z-index: 0; pointer-events: none;
+  }
+  .menu-vignette {
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      radial-gradient(circle at 68% 45%, rgba(0, 240, 255, 0.04) 0%, rgba(7, 10, 18, 0.72) 65%, rgba(4, 6, 12, 0.95) 100%),
+      linear-gradient(90deg, rgba(5, 8, 15, 0.92) 0%, rgba(5, 8, 15, 0.62) 42%, rgba(5, 8, 15, 0.25) 70%, rgba(5, 8, 15, 0.88) 100%);
+  }
+  .menu-scanlines {
+    position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0.14;
+    background: repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0, 0, 0, 0.55) 3px);
+  }
+
+  /* ==================== CLEAN TOP HEADER ==================== */
+  .console-top {
+    position: relative; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px clamp(18px, 3.5vw, 44px) 12px;
+    border-bottom: 2px solid rgba(0, 240, 255, 0.22);
+    background: linear-gradient(180deg, rgba(5, 8, 15, 0.92) 0%, rgba(5, 8, 15, 0.4) 100%);
+  }
+  .brand-cluster {
+    display: flex; align-items: center; gap: 16px;
+  }
+  .g3-logo-img {
+    height: 50px; width: auto;
+    filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.48));
+    transform: rotate(-2deg);
+  }
+  .brand-collab-x {
+    font: 900 22px system-ui, sans-serif; color: var(--pink);
+    text-shadow: 0 0 12px var(--pink);
+  }
+  .skate-stencil {
+    display: flex; align-items: baseline; gap: 3px;
+    transform: skewX(-8deg);
+  }
+  .skate-stencil .sk-word {
+    font: 900 clamp(32px, 4.2vw, 46px)/0.95 "Arial Black", Impact, sans-serif;
+    letter-spacing: -0.05em; color: #fff;
+    text-shadow: 3px 3px 0 #000, 0 0 18px rgba(0, 240, 255, 0.35);
+  }
+  .skate-stencil .sk-dot {
+    color: var(--cyan); font-size: clamp(32px, 4.2vw, 46px);
+  }
+  .skate-stencil .sk-num {
+    font: 900 clamp(34px, 4.4vw, 50px)/0.95 Impact, "Arial Black", sans-serif;
+    color: var(--pink); margin-left: 4px;
+    text-shadow: 3px 3px 0 #000, 0 0 16px rgba(255, 42, 133, 0.6);
+  }
+
+  /* Live USB Controller Status Pill */
+  .pad-status-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px;
+    background: rgba(10, 16, 28, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+    font: 800 11px system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted);
+    transition: all 0.2s ease;
+  }
+  .pad-status-pill.connected {
+    border-color: var(--green); color: #fff;
+    box-shadow: 0 0 18px rgba(63, 185, 80, 0.3);
+  }
+  .pad-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #55647a;
+  }
+  .pad-status-pill.connected .pad-dot {
+    background: var(--green); box-shadow: 0 0 8px var(--green);
+  }
+
+  /* ==================== MAIN CONSOLE STAGE ==================== */
+  .console-stage {
+    position: relative; z-index: 5; flex: 1; min-height: 0;
+    display: grid; grid-template-columns: 330px 1fr 410px;
+    gap: 24px; align-items: stretch;
+    padding: 16px clamp(18px, 3.5vw, 44px);
+    max-width: 1580px; width: 100%; margin: 0 auto;
+  }
+  @media (max-width: 1100px) {
+    .console-stage { grid-template-columns: 300px 1fr; }
+    .stage-center-hud { display: none !important; }
+  }
+  @media (max-width: 760px) {
+    .console-stage { grid-template-columns: 1fr; overflow-y: auto; }
+  }
+
+  /* Left Simple 3-Blade Stack */
+  .blade-stack {
+    display: flex; flex-direction: column; justify-content: center; gap: 14px;
+  }
+  .game-blade {
+    position: relative; cursor: pointer; border: none; text-align: left;
+    padding: 16px 20px 16px 22px;
+    background: linear-gradient(100deg, rgba(16, 23, 38, 0.95) 0%, rgba(11, 16, 28, 0.9) 100%);
+    clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+    border-left: 5px solid #354764;
+    color: #e6eef8;
+    transition: transform 0.14s cubic-bezier(.2,.9,.3,1), background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6);
+  }
+  .game-blade::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.12;
+    background: repeating-linear-gradient(-45deg, #fff 0, #fff 1px, transparent 1px, transparent 6px);
+  }
+  .game-blade:hover, .game-blade:focus-visible, .game-blade.pad-focus {
+    transform: translateX(8px) scale(1.02);
+    border-left-color: var(--cyan);
+    background: linear-gradient(100deg, rgba(24, 40, 66, 0.98) 0%, rgba(14, 24, 42, 0.95) 100%);
+    box-shadow: 0 0 22px rgba(0, 240, 255, 0.35);
+    outline: none;
+  }
+  .game-blade.primary-dropin {
+    background: linear-gradient(105deg, var(--cyan) 0%, #0088ff 58%, var(--pink) 100%);
+    border-left: 6px solid #fff;
+    color: #03101c;
+    padding: 20px 22px;
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.45);
+  }
+  .game-blade.primary-dropin:hover, .game-blade.primary-dropin.pad-focus {
+    transform: translateX(10px) scale(1.035);
+    filter: brightness(1.08);
+  }
+  .blade-main { display: flex; flex-direction: column; gap: 3px; }
+  .blade-title {
+    font: 900 18px/1.05 "Arial Black", Impact, system-ui, sans-serif;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    transform: skewX(-6deg);
+  }
+  .game-blade.primary-dropin .blade-title {
+    font-size: 22px; color: #020b14; text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+  }
+  .blade-sub {
+    font: 700 12px system-ui, sans-serif; color: var(--muted); letter-spacing: 0.02em;
+  }
+  .game-blade.primary-dropin .blade-sub { color: #062238; font-weight: 800; }
+
+  /* Console Controller Button Badges (A, X, Y, B) */
+  .ctrl-btn {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font: 900 14px system-ui, sans-serif; color: #fff;
+    box-shadow: inset 0 2px 2px rgba(255,255,255,0.35), 0 3px 6px rgba(0,0,0,0.65);
+    border: 2px solid rgba(255,255,255,0.55);
+  }
+  .ctrl-a { background: radial-gradient(circle at 35% 30%, #4ae364, #1b8f30); }
+  .ctrl-x { background: radial-gradient(circle at 35% 30%, #38b6ff, #0f62c9); }
+  .ctrl-y { background: radial-gradient(circle at 35% 30%, #ffca28, #c78500); }
+  .ctrl-b { background: radial-gradient(circle at 35% 30%, #ff5252, #b71c1c); }
+
+  /* Center Live 3D Park Preview HUD Overlay */
+  .stage-center-hud {
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+    padding-bottom: 14px; pointer-events: none; text-align: center;
+  }
+  .center-park-banner {
+    background: linear-gradient(90deg, transparent 0%, rgba(6, 10, 18, 0.88) 18%, rgba(6, 10, 18, 0.88) 82%, transparent 100%);
+    padding: 12px 38px; border-top: 1px solid rgba(255,255,255,0.12); border-bottom: 1px solid rgba(255,255,255,0.12);
+  }
+  .center-park-banner h1 {
+    margin: 0; font: 900 clamp(24px, 2.8vw, 36px)/1.05 "Arial Black", Impact, sans-serif;
+    text-transform: uppercase; letter-spacing: 0.02em; color: #fff;
+    transform: skewX(-6deg); text-shadow: 0 3px 12px #000;
+  }
+  .center-park-banner p {
+    margin: 5px 0 0; font: 700 12px system-ui, sans-serif; color: #b5c4d8;
+  }
+
+  /* Right Panel: Selected Park Photo + Park Grid */
+  .showcase-column {
+    display: flex; flex-direction: column; gap: 12px; min-height: 0;
+    background: linear-gradient(165deg, rgba(13, 19, 31, 0.92) 0%, rgba(7, 10, 18, 0.95) 100%);
+    border: 1px solid rgba(0, 240, 255, 0.25);
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+    padding: 14px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.7);
+  }
+
+  .hero-photo-frame {
+    position: relative; width: 100%; aspect-ratio: 16 / 9;
+    background: #05080f; overflow: hidden;
+    border: 2px solid var(--cyan);
+    box-shadow: 0 0 22px rgba(0, 240, 255, 0.22);
+    flex-shrink: 0;
+  }
+  .hero-photo-frame img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .hero-photo-tag {
+    position: absolute; top: 8px; left: 8px;
+    padding: 3px 9px; background: rgba(5, 8, 15, 0.88);
+    border-left: 3px solid var(--pink); color: #fff;
+    font: 900 10px system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .hero-mode-pill {
+    position: absolute; top: 8px; right: 8px;
+    padding: 3px 9px; background: rgba(0, 240, 255, 0.92); color: #021019;
+    font: 900 10px system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .hero-mode-pill.hd { background: var(--pink); color: #fff; }
+
+  .park-list-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 6px;
+  }
+  .park-list-header span {
+    font: 900 11px system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cyan);
+  }
+  .map-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: max-content; gap: 8px;
+    overflow-y: auto; flex: 1; min-height: 140px; padding-right: 4px;
+    touch-action: pan-y;
+  }
+  .map-grid::-webkit-scrollbar { width: 6px; }
+  .map-grid::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+  .map-grid::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 3px; }
+
+  .map-card {
+    background: #0d1422; border: 2px solid #223049;
+    overflow: hidden; cursor: pointer; position: relative;
+    transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+    display: block;
+    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  }
+  .map-card:hover {
+    transform: translateY(-2px); border-color: var(--cyan);
+  }
+  .map-card.selected {
+    border-color: var(--cyan);
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.55);
+    background: #142238;
+  }
+  .map-card .thumb {
+    width: 100%; height: 78px; background: #070a12; position: relative; overflow: hidden;
+  }
+  .vault-grid .map-card .thumb {
+    height: 120px;
+  }
+  .map-card .thumb img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform 0.2s ease;
+  }
+  .map-card:hover .thumb img { transform: scale(1.06); }
+  .map-card .tag-badge {
+    position: absolute; top: 4px; left: 4px;
+    background: rgba(5, 8, 15, 0.86); color: #fff;
+    font: 800 9px system-ui, sans-serif; padding: 1px 5px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    border-left: 2px solid var(--cyan);
+  }
+  .map-card .card-info { padding: 6px 8px; }
+  .map-card .card-title {
+    font: 900 12px/1.15 system-ui, sans-serif; color: #fff; text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .map-card .card-sub {
+    font: 600 10px system-ui, sans-serif; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;
+  }
+
+  /* ==================== "MORE PARKS (52 PARKS)" BROWSER MODAL ==================== */
+  #more-parks-modal {
+    position: fixed; inset: 0; z-index: 18;
+    background: rgba(4, 7, 14, 0.94); backdrop-filter: blur(10px);
+    display: none; flex-direction: column;
+    padding: 20px clamp(18px, 3.5vw, 48px);
+  }
+  #more-parks-modal.open { display: flex; }
+
+  .vault-header {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 14px; padding-bottom: 12px; border-bottom: 2px solid rgba(0, 240, 255, 0.3);
+  }
+  .vault-title-group { display: flex; align-items: center; gap: 14px; }
+  .vault-title {
+    font: 900 clamp(22px, 3vw, 32px) "Arial Black", Impact, sans-serif;
+    text-transform: uppercase; color: #fff; transform: skewX(-6deg); margin: 0;
+  }
+  .vault-title span { color: var(--cyan); }
+  .vault-search {
+    background: #0c1322; color: #fff; border: 2px solid #283a56;
+    padding: 8px 14px; font: 700 13px system-ui, sans-serif; width: min(260px, 55vw);
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+    outline: none;
+  }
+  .vault-search:focus { border-color: var(--cyan); }
+
+  .vault-cats {
+    display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;
+  }
+  .vault-cat-btn {
+    cursor: pointer; border: 1px solid #2b3d59; background: #0e1626; color: #a8b9d0;
+    padding: 6px 14px; font: 800 11px system-ui, sans-serif; text-transform: uppercase;
+    letter-spacing: 0.06em;
+    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  }
+  .vault-cat-btn:hover { color: #fff; border-color: var(--cyan); }
+  .vault-cat-btn.active {
+    background: linear-gradient(135deg, var(--pink) 0%, #9b2cff 100%);
+    color: #fff; border-color: transparent;
+  }
+
+  .vault-grid {
+    flex: 1; min-height: 0; overflow-y: auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
+    grid-auto-rows: max-content;
+    gap: 12px; padding-right: 6px;
+    touch-action: pan-y;
+  }
+  .vault-grid::-webkit-scrollbar { width: 8px; }
+  .vault-grid::-webkit-scrollbar-track { background: #070b12; }
+  .vault-grid::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 4px; }
+
+  /* ==================== BOTTOM CONSOLE CONTROLLER PROMPT BAR ==================== */
+  .console-bottom {
+    position: relative; z-index: 5;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 10px clamp(18px, 3.5vw, 44px);
+    background: linear-gradient(0deg, rgba(4, 6, 12, 0.96) 0%, rgba(8, 12, 22, 0.82) 100%);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    font: 800 12px system-ui, sans-serif; color: #c4d2e6;
+  }
+  .prompt-group { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
+  .prompt-item { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+  .prompt-item:hover { color: var(--cyan); }
+  .ctrl-sm {
+    width: 22px; height: 22px; font-size: 11px; border-width: 1.5px;
+  }
+
+  /* ==================== CUSTOM SKATE 3 × G+3 LOADING SCREEN ==================== */
+  #overlay {
+    position: fixed; inset: 0; display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(0, 240, 255, 0.14) 0%, rgba(255, 42, 133, 0.08) 38%, rgba(5, 8, 14, 0.98) 78%),
+      #05070e;
+    z-index: 25; padding: 20px; overflow: hidden;
+  }
+  #overlay::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.22;
+    background:
+      repeating-linear-gradient(-35deg, rgba(0, 240, 255, 0.06) 0px, rgba(0, 240, 255, 0.06) 2px, transparent 2px, transparent 14px);
+  }
+  #panel {
+    position: relative; z-index: 2;
+    width: min(640px, 96vw);
+    background: linear-gradient(160deg, rgba(14, 21, 36, 0.96) 0%, rgba(7, 11, 20, 0.98) 100%);
+    border: 2px solid var(--cyan);
+    clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
+    padding: 24px 28px;
+    box-shadow: 0 0 50px rgba(0, 240, 255, 0.25), 0 24px 60px rgba(0, 0, 0, 0.85);
+  }
+  .load-brand-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.25);
+  }
+  .load-brand-left { display: flex; align-items: center; gap: 12px; }
+  .load-brand-left img { height: 42px; filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.5)); }
+  .load-zone-tag {
+    font: 900 11px system-ui, sans-serif; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 4px 10px; background: rgba(255, 42, 133, 0.2); border: 1px solid var(--pink); color: #fff;
+  }
+
+  .load-media-wrap {
+    position: relative; width: 100%; aspect-ratio: 16 / 9;
+    border: 2px solid rgba(255, 255, 255, 0.18); overflow: hidden;
+    margin-bottom: 16px; background: #04070d;
+  }
+  #loadthumb {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    animation: slowZoom 8s ease-out forwards;
+  }
+  @keyframes slowZoom {
+    from { transform: scale(1.0); }
+    to { transform: scale(1.08); }
+  }
+  .load-media-caption {
+    position: absolute; inset: auto 0 0 0; padding: 28px 16px 12px;
+    background: linear-gradient(180deg, transparent 0%, rgba(4, 7, 14, 0.96) 100%);
+    display: flex; align-items: flex-end; justify-content: space-between;
+  }
+  #loadtitle {
+    margin: 0; font: 900 clamp(20px, 3vw, 28px)/1.05 "Arial Black", Impact, sans-serif;
+    text-transform: uppercase; color: #fff; transform: skewX(-6deg);
+    text-shadow: 2px 2px 0 #000;
+  }
+
+  .load-status-row {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 10px;
+  }
+  .skate-wheel-spinner {
+    width: 34px; height: 34px; flex-shrink: 0;
+    animation: wheelSpin 0.85s linear infinite;
+  }
+  @keyframes wheelSpin {
+    to { transform: rotate(360deg); }
+  }
+  .load-status-text { flex: 1; text-align: left; }
+  #status {
+    color: var(--cyan); font: 800 13px ui-monospace, SFMono-Regular, Consolas, monospace;
+    white-space: pre-wrap;
+  }
+  #status.error { color: #ff6b6b; }
+  #load-tip {
+    color: var(--muted); font: 600 12px system-ui, sans-serif; margin-top: 3px;
+  }
+
+  .bar {
+    height: 10px; background: #0c1322; overflow: hidden;
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+  }
+  .bar > div {
+    height: 100%; width: 0;
+    background: linear-gradient(90deg, var(--cyan) 0%, #0088ff 50%, var(--pink) 100%);
+    box-shadow: 0 0 16px var(--cyan);
+    transition: width 0.14s ease;
+  }
+
+  /* ==================== SIMPLE IN-GAME BOTTOM HUD BAR ==================== */
+  #mapbar {
+    position: fixed; bottom: 8px; right: 8px; z-index: 6;
+    display: none; gap: 8px; align-items: center;
+    background: rgba(7, 10, 18, 0.9); backdrop-filter: blur(6px);
+    padding: 6px 12px; font: 700 12px system-ui, sans-serif;
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  }
+  #mapbar.visible { display: flex; }
+  #mapbar button {
+    background: #121b2c; color: var(--fg); border: 1px solid #2d3e5a;
+    padding: 5px 11px; cursor: pointer; font: 800 11px system-ui, sans-serif;
+    text-transform: uppercase;
+  }
+  #mapbar button:hover { border-color: var(--cyan); color: var(--cyan); }
+  #mapbar .primary-pill {
+    background: linear-gradient(135deg, var(--cyan) 0%, #0070f3 100%);
+    color: #02101c; border-color: transparent; font-weight: 900;
+  }
+  #mapbar .primary-pill:hover { color: #000; filter: brightness(1.1); }
+  :fullscreen #mapbar { opacity: 0; transition: opacity .3s; }
+  :fullscreen #mapbar:hover { opacity: 1; }
+  #fpsbadge {
+    font-family: ui-monospace, monospace; font-weight: 800; color: var(--green);
+    padding: 3px 7px; background: #090d16; border: 1px solid #223048;
+  }
+  #hint {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30;
+    max-width: min(500px, 92vw); background: rgba(10, 15, 26, 0.96);
+    border: 2px solid var(--cyan); padding: 20px 24px; display: none;
+    line-height: 1.55; font: 600 13px system-ui, sans-serif;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.85);
+  }
+  #hint kbd {
+    background: #1b273d; border: 1px solid var(--cyan);
+    padding: 1px 6px; font-family: ui-monospace, monospace; font-size: 12px; color: #fff;
+  }
+</style>
+</head>
+<body>
+<div id="game"><canvas id="bevy" tabindex="0"></canvas></div>
+
+<!-- ==================== SIMPLE CONSOLE MAIN MENU (3 BLADES + USB CONTROLLER READY) ==================== -->
+<div id="lobby">
+  <canvas id="bg-canvas"></canvas>
+  <div class="menu-vignette"></div>
+  <div class="menu-scanlines"></div>
+
+  <!-- Top Console Header -->
+  <div class="console-top">
+    <div class="brand-cluster">
+      <img src="previews/g3_logo.png" alt="G+3" class="g3-logo-img">
+      <span class="brand-collab-x">&times;</span>
+      <div class="skate-stencil">
+        <span class="sk-word">skate</span><span class="sk-dot">.</span><span class="sk-num">3</span>
+      </div>
+    </div>
+
+    <div class="pad-status-pill" id="pad-status-pill">
+      <span class="pad-dot"></span>
+      <span id="pad-status-text">USB CONTROLLER READY</span>
+    </div>
+  </div>
+
+  <!-- Main Console Stage -->
+  <div class="console-stage">
+    <!-- Left Column: Only 3 Simple Console Blades -->
+    <div class="blade-stack">
+      <button type="button" class="game-blade primary-dropin" id="launch-btn">
+        <div class="blade-main">
+          <div class="blade-title">Play Now</div>
+          <div class="blade-sub" id="blade-launch-sub">Drop In: Start Park</div>
+        </div>
+        <span class="ctrl-btn ctrl-a">A</span>
+      </button>
+
+      <button type="button" class="game-blade" id="open-vault-blade">
+        <div class="blade-main">
+          <div class="blade-title">More Parks (52)</div>
+          <div class="blade-sub">Browse All 52 Skate Parks</div>
+        </div>
+        <span class="ctrl-btn ctrl-y">Y</span>
+      </button>
+
+      <button type="button" class="game-blade" id="gfx-toggle-blade">
+        <div class="blade-main">
+          <div class="blade-title" id="gfx-blade-title">Graphics: Low</div>
+          <div class="blade-sub" id="gfx-blade-sub">Default &middot; Fast Chromebook 60 FPS</div>
+        </div>
+        <span class="ctrl-btn ctrl-x">X</span>
+      </button>
+    </div>
+
+    <!-- Center Column: Live 3D Skatepark Preview Viewport -->
+    <div class="stage-center-hud">
+      <div class="center-park-banner">
+        <h1 id="hero-title">Start Park</h1>
+        <p id="hero-desc">Classic indoor training skatepark featuring halfpipes, central funboxes, hubba ledges, and smooth lines.</p>
+      </div>
+    </div>
+
+    <!-- Right Column: Park Photograph + Featured Parks Grid -->
+    <div class="showcase-column">
+      <div class="hero-photo-frame">
+        <img id="hero-img" src="previews/StartPark.png" alt="Selected skate park photo">
+        <span class="hero-photo-tag" id="hero-tag-badge">Indoor Park</span>
+        <span class="hero-mode-pill" id="hero-mode-pill">LOW GRAPHICS</span>
+      </div>
+
+      <div class="park-list-header">
+        <span>Select a Skate Park</span>
+        <button type="button" id="browse-all-inline-btn" style="background:none;border:none;color:var(--pink);font:900 11px system-ui,sans-serif;cursor:pointer;text-transform:uppercase;">
+          + More Parks (52) &rarr;
+        </button>
+      </div>
+
+      <div class="map-grid" id="map-grid"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Console Controller Prompts -->
+  <div class="console-bottom">
+    <div class="prompt-group">
+      <span class="prompt-item" id="prompt-dropin"><span class="ctrl-btn ctrl-a ctrl-sm">A</span> PLAY PARK</span>
+      <span class="prompt-item" id="prompt-more"><span class="ctrl-btn ctrl-y ctrl-sm">Y</span> MORE PARKS (52)</span>
+      <span class="prompt-item" id="prompt-gfx"><span class="ctrl-btn ctrl-x ctrl-sm">X</span> GRAPHICS: <b id="prompt-gfx-val">LOW</b></span>
+      <span class="prompt-item" id="prompt-controls"><span class="ctrl-btn ctrl-b ctrl-sm">B</span> CONTROLS</span>
+    </div>
+    <div>
+      <span>D-PAD / LEFT STICK: SELECT PARK &middot; USB CONTROLLER &amp; KEYBOARD READY</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== "MORE PARKS (52 PARKS)" BROWSER MODAL ==================== -->
+<div id="more-parks-modal" aria-hidden="true">
+  <div class="vault-header">
+    <div class="vault-title-group">
+      <img src="previews/g3_logo.png" alt="G+3" style="height:38px">
+      <h2 class="vault-title">More Parks <span>&middot; 52 Skate Parks</span></h2>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <input type="search" id="vault-search" class="vault-search" placeholder="Search 52 parks...">
+      <button type="button" class="game-blade" id="close-vault-btn" style="padding:10px 18px;">
+        <div class="blade-main"><div class="blade-title" style="font-size:14px;">Back</div></div>
+        <span class="ctrl-btn ctrl-b ctrl-sm">B</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="vault-cats" id="vault-cats"></div>
+  <div class="vault-grid" id="vault-grid"></div>
+</div>
+
+<!-- ==================== CUSTOM SKATE 3 × G+3 LOADING OVERLAY ==================== -->
+<div id="overlay">
+  <div id="panel">
+    <div class="load-brand-header">
+      <div class="load-brand-left">
+        <img src="previews/g3_logo.png" alt="G+3">
+        <span class="brand-collab-x">&times;</span>
+        <div class="skate-stencil">
+          <span class="sk-word" style="font-size:28px">skate</span><span class="sk-dot" style="font-size:28px">.</span><span class="sk-num" style="font-size:30px">3</span>
+        </div>
+      </div>
+      <span class="load-zone-tag" id="load-gfx-tag">LOW GRAPHICS</span>
+    </div>
+
+    <div class="load-media-wrap">
+      <img id="loadthumb" src="previews/StartPark.png" alt="Loading skate park photo">
+      <div class="load-media-caption">
+        <h2 id="loadtitle">Start Park</h2>
+      </div>
+    </div>
+
+    <div class="load-status-row">
+      <svg class="skate-wheel-spinner" viewBox="0 0 64 64" fill="none">
+        <circle cx="32" cy="32" r="28" stroke="#00f0ff" stroke-width="5" stroke-dasharray="28 10"/>
+        <circle cx="32" cy="32" r="18" stroke="#ff2a85" stroke-width="3"/>
+        <circle cx="32" cy="32" r="7" fill="#00f0ff"/>
+      </svg>
+      <div class="load-status-text">
+        <div id="status">Preparing skatepark...</div>
+        <div id="load-tip">PRO TIP: Hold Down on Right Stick (or Down Arrow) to crouch, then flick Up for a higher Ollie.</div>
+      </div>
+    </div>
+
+    <div class="bar"><div id="progress"></div></div>
+  </div>
+</div>
+
+<!-- ==================== SIMPLE IN-GAME BOTTOM BAR ==================== -->
+<div id="mapbar">
+  <span id="fpsbadge" title="Live framerate">-- FPS</span>
+  <button id="parksbtn" type="button" class="primary-pill">Change Park / Menu</button>
+  <button id="controlsbtn" type="button">Controls</button>
+  <button id="fullscreen" type="button">Fullscreen</button>
+</div>
+<div id="hint"></div>
+
+<script>
+(function () {
+  // Always default to Low Graphics (0.65x Chromebook fast preset) unless ?gfx=high is explicitly requested
+  var params = new URLSearchParams(location.search);
+  var gfxMode = params.get('gfx') === 'high' ? 'high' : 'low';
+  var resScale = gfxMode === 'high' ? 1.0 : 0.65;
+
+  window.SKATE_GFX_MODE = gfxMode;
+  window.SKATE_RES_SCALE = resScale;
+  if (gfxMode === 'low') document.body.classList.add('low-gfx');
+
+  try {
+    Object.defineProperty(window, 'devicePixelRatio', {
+      get: function () { return window.SKATE_RES_SCALE; },
+      configurable: true
+    });
+  } catch (e) {}
+})();
+</script>
+<script type="module" src="./loader.js"></script>
+<script type="module" src="./touch.js"></script>
+</body>
+</html>
